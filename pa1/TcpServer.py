@@ -10,6 +10,7 @@ serverSocket.listen(1)
 print('The Server is ready to receive')
 
 while True:
+	print("patrick")
 	connectionSocket, addr = serverSocket.accept()
 	sentence = connectionSocket.recv(1024).decode()
 	clientRequest = sentence.split(' ')
@@ -20,5 +21,9 @@ while True:
 	
 	#connectionSocket.send(capitalizedSentence.encode())
 	connectionSocket.send(clientRequest[0].encode())
+	connectionSocket.send(clientRequest[1].encode())
+	connectionSocket.send(clientRequest[2].encode())
+	connectionSocket.send(clientRequest[3].encode())
+	connectionSocket.send(clientRequest[4].encode())
 	connectionSocket.close()
 	# if empy string break loop
