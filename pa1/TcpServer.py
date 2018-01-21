@@ -1,40 +1,55 @@
+# Written by Patrick Ekel u0736878 for cs 4480 Spring 2018
 import socket
+import sys
+import urllib.parse
 
-serverPort = 12000
+if (len(sys.argv) != 2):
+	print("A valid port must be provided.")
+	exit()
+
+serverPort = int(sys.argv[1])
 serverSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# bind to localhost on the given port
 try:
 	serverSocket.bind(('localhost', serverPort))
 except Exception:
-	print('in catch')
+	print("Unable to bind to host.")
+	exit()
 serverSocket.listen(1)
 print('The Server is ready to receive\n')
 
 while True:
 	connectionSocket, addr = serverSocket.accept()
 	sentence = connectionSocket.recv(1024).decode()
-	clientRequest = sentence.split(' ')
-	print('client request is', clientRequest)	
-	# do check for 3 itms, first get last something specific
-	if (len(clientRequest) < 3): # decent if check?
-		connectionSocket.send("failed request".encode())
-		#connectionSocket.close()
-		
+	clientInput =""
+	# build request from user, making sure entire request is received
+	while '\r\n' != sentence:
+		clientInput += sentence
+		sentence = connectionSocket.recv(1024).decode()
+	clientRequest = clientInput.split(' ')
+	# make sure request is a get request
+	if 'GET' not in clientRequest:
+		errorMessage = 'HTTP/1.0 501 Not Implemented\r\nerror: only GET requests are supported\r\n\r\n'
+		connectionSocket.send(errorMessage.encode())
+		connectionSocket.close()
+		exit()
+	# set up connection with remote server		
 	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	proxySocket.connect(('www.cs.utah.edu', 80))
-	proxyRequest ='GET /~kobus/simple.html HTTP/1.0\r\nHost: www.cs.utah.edu\r\n\r\n'
-	print('proxy request is:\n', proxyRequest)
+	if (len(clientRequest) == 3):
+		proxySocket.connect((urllib.parse.urlparse(clientRequest[1]).netloc, 80))
+		proxyRequest ='GET ' + urllib.parse.urlparse(clientRequest[1]).path + ' HTTP/1.0\r\nHost: ' + urllib.parse.urlparse(clientRequest[1]).netloc +'\r\n' +'Connection: close' + '\r\n\r\n'
+	else:
+		newstr = urllib.parse.urlparse(clientRequest[3]).path.replace('\r\n', '')
+		proxySocket.connect((newstr, 80))
+		proxyRequest ='GET ' + urllib.parse.urlparse(clientRequest[1]).path + ' HTTP/1.0\r\nHost: ' + newstr +'\r\n' +'Connection: close' + '\r\n\r\n'
+	
+	# forward request to end server, get response back
 	proxySocket.send(proxyRequest.encode())
 	responseMessage = proxySocket.recv(1024)
-	print('From utah.edu:\n', responseMessage.decode())
+	proxySocket.close()
 
-	#proxySocket.close()
+	# send response back to client
 	connectionSocket.send(responseMessage)
+	connectionSocket.close()
 
-	#endConnectionSocket, endAddr = serverSocket.accept() #port should be 80
-	#connectionSocket.send(clientRequest[0].encode())
-	#connectionSocket.send(clientRequest[1].encode())
-	#connectionSocket.send(clientRequest[2].encode())
-	#connectionSocket.close()
-	
-
-	# if empy string break loop
