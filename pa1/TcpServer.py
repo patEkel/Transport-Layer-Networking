@@ -45,7 +45,7 @@ while True:
 	print("query is: ", urllib.parse.urlparse(clientInput).query)	
 	print("fragment is: ", urllib.parse.urlparse(clientInput).fragment)	
 	print("port is: ", urllib.parse.urlparse(clientInput).port)	
-	print"==============================================\n)
+	print("==============================================\n")
 	###
 	
 	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
