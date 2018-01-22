@@ -35,6 +35,19 @@ while True:
 		connectionSocket.close()
 		exit()
 	# set up connection with remote server		
+	
+	###
+	#print("client request is: ", clientRequest, "\nand parsed client request is: ", urllib.parse.urlparse(clientInput))
+	print("scheme is: ", urllib.parse.urlparse(clientInput).scheme)
+	print("netloc is: ", urllib.parse.urlparse(clientInput).netloc)
+	print("path is: ", urllib.parse.urlparse(clientInput).path)
+	print("params are: ", urllib.parse.urlparse(clientInput).params)	
+	print("query is: ", urllib.parse.urlparse(clientInput).query)	
+	print("fragment is: ", urllib.parse.urlparse(clientInput).fragment)	
+	print("port is: ", urllib.parse.urlparse(clientInput).port)	
+	print"==============================================\n)
+	###
+	
 	proxySocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	if (len(clientRequest) == 3):
 		proxySocket.connect((urllib.parse.urlparse(clientRequest[1]).netloc, 80))
