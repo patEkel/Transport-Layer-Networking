@@ -1,7 +1,20 @@
 # Written by Patrick Ekel u0736878 for cs 4480 Spring 2018
 import socket
 import sys
+import threading
+import queue
 import urllib.parse
+
+
+def threaded(connection):
+	connection.send(str.encode("rickkky\n"))
+	while True:
+		data = connection.recv(2048)
+		reply = "Server says: " + data.decode()
+		if not data: # no more data
+			break
+		connection.sendall(str.encode(reply))	
+
 
 if (len(sys.argv) != 2):
 	print("A valid port must be provided.")
@@ -21,6 +34,7 @@ print('The Server is ready to receive\n')
 
 while True:
 	connectionSocket, addr = serverSocket.accept()
+	threading.Thread(target = threaded, args = (connectionSocket, ))
 	sentence = connectionSocket.recv(1024).decode()
 	clientInput =""
 	# build request from user, making sure entire request is received
@@ -45,6 +59,7 @@ while True:
 	print("query is: ", urllib.parse.urlparse(clientInput).query)	
 	print("fragment is: ", urllib.parse.urlparse(clientInput).fragment)	
 	print("port is: ", urllib.parse.urlparse(clientInput).port)	
+	print(urllib.parse.urlparse(clientRequest[1]).netloc)
 	print("==============================================\n")
 	###
 	
@@ -66,3 +81,7 @@ while True:
 	connectionSocket.send(responseMessage)
 	connectionSocket.close()
 
+#main():
+#	print("hello")
+#if __name__ == "__main__":
+#	main()
