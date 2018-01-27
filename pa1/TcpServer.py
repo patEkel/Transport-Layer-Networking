@@ -5,8 +5,7 @@ import threading
 import queue
 import urllib.parse
 
-def threaded(connection):
-	print("IN THREAD\n")	
+def threaded(connection):	
 	sentence = connection.recv(1024).decode()
 	clientInput =""
 	# build request from user, making sure entire request is received
@@ -60,21 +59,4 @@ print('The Server is ready to receive\n')
 
 while True:
 	connectionSocket, addr = serverSocket.accept()
-	print("IN MAIN\n")
 	threading.Thread(target = threaded, args = (connectionSocket, )).start()
-	###
-	#print("client request is: ", clientRequest, "\nand parsed client request is: ", urllib.parse.urlparse(clientInput))
-	#print("scheme is: ", urllib.parse.urlparse(clientInput).scheme)
-	#print("netloc is: ", urllib.parse.urlparse(clientInput).netloc)
-	#print("path is: ", urllib.parse.urlparse(clientInput).path)
-	#print("params are: ", urllib.parse.urlparse(clientInput).params)	
-	#print("query is: ", urllib.parse.urlparse(clientInput).query)	
-	#print("fragment is: ", urllib.parse.urlparse(clientInput).fragment)	
-	#print("port is: ", urllib.parse.urlparse(clientInput).port)	
-	#print(urllib.parse.urlparse(clientRequest[1]).netloc)
-	#print("==============================================\n")
-	###
-#main():
-#	print("hello")
-#if __name__ == "__main__":
-#	main()
