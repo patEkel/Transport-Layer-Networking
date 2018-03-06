@@ -63,7 +63,7 @@ class NetworkSimulator(object):
 			#Perform the appropriate action based on the event
 			if(_next.get_type()==NetworkSimulator.TIMERINTERRUPT):
 				if _next.get_entity()==NetworkSimulator.A:
-					self.a_timer_interrup()
+					self.a_timer_interrupt()
 				else:
 					print "Internal Panic: Timeout for invalid entity"
 
