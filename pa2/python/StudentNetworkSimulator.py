@@ -95,11 +95,15 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # Also add any necessary methods (e.g. checksum of a String)
     SEQNUM = 0
     INTRANSIT = False
+    MESSAGE = ""
+
+##########   soooo should i keep track of ack num and seq sep? and then when adding here add them, not seqnum twice..
 
     def create_checksum_val(self, message):
         char_sum = 0
         for c in message:
             char_sum += ord(c)
+        # char_sum += self.SEQNUM + self.SEQNUM i have no idea about this.....just use 0, 1 like FSM?
         return char_sum
 
     # This is the constructor.  Don't touch!
@@ -115,9 +119,10 @@ class StudentNetworkSimulator(NetworkSimulator, object):
         p = Packet(self.SEQNUM, self.SEQNUM, checkSum, str(message))
         if not self.INTRANSIT:
             self.INTRANSIT = True
+            self.MESSAGE = str(message)
             print "___patrick____!!!!!"
-            self.start_timer(self.A, 100)
             self.to_layer3(self.A, p)
+            self.start_timer(self.A, 10)
         else:
             #if timeout, resend packet!
             if self.get_time() > 1:
@@ -141,10 +146,25 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # arrives at the A-side.  "packet" is the (possibly corrupted) packet
     # sent from the B-side.
     def a_input(self, packet):
-        if paket.get_acknum() != self.SEQNUM:
-            print "___in the iff statement, line 130___________________________________-"
+        if not self.INTRANSIT:
+            print "___in the statement, line 147___________________________________"
+            if packet.get_acknum() != self.SEQNUM or packet.get_checksum() != self.create_checksum_val(packet.get_payload()):
+                print "___in the iff statement, line 149___________shit is corrupttt_______________________"
+                self.a_input(Packet(self.SEQNUM, self.SEQNUM, self.create_checksum_val(str(packet.get_payload())), str(packet.get_payload())))
+            else:
+                print "___in the else statement, 151______________________________________"
+                print self.SEQNUM
+                print packet.get_acknum()
+                print self.create_checksum_val(packet.get_payload())
+                print packet.get_checksum()
+                self.SEQNUM+=1
+                self.INTRANSIT = False
+                self.stop_timer(self.A)
+                # do a checksum check
         else:
-            print "___in the else statement, 132______________________________________"
+            print "___something is already currently in transit!"
+            # see if ACK equals seq... inc seqnum ?
+            # send to layer 5 ????
 
 
     # This routine will be called when A's timer expires (thus generating a 
@@ -153,6 +173,11 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # for how the timer is started and stopped. 
     def a_timer_interrupt(self):
         print "___IN THE MA FUCKN TIMERRRRR INTERUPTT_______"
+        print self.SEQNUM
+        print self.INTRANSIT
+        # self INTRANSIT = false
+        #self.stop_timer(self.A)
+        self.a_output(self.MESSAGE)
 
     # This routine will be called once, before any of your other A-side 
     # routines are called. It can be used to do any required
@@ -177,9 +202,12 @@ class StudentNetworkSimulator(NetworkSimulator, object):
         checkSum = self.create_checksum_val(str(packet.get_payload()))
         print checkSum
         if checkSum == packet.get_checksum():
-            self.to_layer5(self.B, packet.get_payload())
+            self.to_layer5(self.B, packet.get_payload()) # I THINK THIS SHOULD SEND THE DATA UP TO layer 5 !!
+            #self.stop_timer(self.A)
+            #self.start_timer(self.A, 100)
+            self.to_layer3(self.B, packet)
         else:
-            print "send the old ack!!"
+            print "____send the old ack!!"
         # checksum checks if the same sdata was recieved
 
     # This routine will be called once, before any of your other B-side 
