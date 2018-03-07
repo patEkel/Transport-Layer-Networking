@@ -101,6 +101,7 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     SEQSENTPROTO = 0
     ACKSENT = 0
     NUMLOST = 0
+    NUMCORR = 0
 
 ##########   soooo should i keep track of ack num and seq sep? and then when adding here add them, not seqnum twice..
 ### inc app level one for layer 5
@@ -114,7 +115,7 @@ class StudentNetworkSimulator(NetworkSimulator, object):
         return char_sum
 
     def print_stats(self):
-        print "seqinapp:", self.SEQSENTAPP, " seqsentproto:", self.SEQSENTPROTO, " acksent:", self.ACKSENT, " numlost:", self.NUMLOST
+        print "seqinapp:", self.SEQSENTAPP, " seqsentproto:", self.SEQSENTPROTO, " acksent:", self.ACKSENT, " numlost:", self.NUMLOST, " num corrupt:",self.NUMCORR
 
     # This is the constructor.  Don't touch!
     def __init__(self, num_messages, loss, corrupt, avg_delay, trace, seed):
@@ -131,14 +132,13 @@ class StudentNetworkSimulator(NetworkSimulator, object):
         if not self.INTRANSIT:
             self.INTRANSIT = True
             self.MESSAGE = message.get_data()
-            print "payload out of a is " + message.get_data()
+            #print "payload out of a is " + message.get_data()
             self.to_layer3(self.A, p)
-            self.start_timer(self.A, 20)
+            self.start_timer(self.A, 25)
             self.SEQSENTAPP += 1
             self.SEQSENTPROTO += 1
         else:
             print "__shit already in transit"
-            #if timeout, resend packet!
 
     # This routine will be called whenever a packet sent from the B-side 
     # (i.e. as a result of a toLayer3() being done by a B-side procedure)
@@ -147,10 +147,9 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     def a_input(self, packet):
         if self.INTRANSIT:
             if packet.get_acknum() != self.SEQNUM or packet.get_checksum() != self.create_checksum_val(packet.get_payload()):
-                print "___in the iff statement, line 149___________shit is corrupttt________________"
+                self.NUMCORR += 1
                 self.a_output(Message(packet.get_payload()))
             else:
-                print "___in the else statement, 151_________clean receive from B to A...stop timer______"
                 self.SEQNUM = 1 - self.SEQNUM
                 self.INTRANSIT = False
                 self.stop_timer(self.A)
@@ -165,7 +164,6 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # the retransmission of packets. See startTimer() and stopTimer(), above,
     # for how the timer is started and stopped. 
     def a_timer_interrupt(self):
-        print "___IN THE MA FUCKN TIMERRRRR INTERUPTT_______"
         self.INTRANSIT = False
         self.a_output(Message(self.MESSAGE))
         self.NUMLOST += 1
@@ -177,6 +175,7 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # of entity A).	
     def a_init(self):
         self.SEQNUM = 0
+        self.NUMLOST = 0
         self.INTRANSIT = False
 
     # This routine will be called whenever a packet sent from the B-side 
@@ -185,8 +184,7 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # sent from the A-side.
 
     def b_input(self, packet):
-        #self.INTRANSIT = False ??????
-        print "payload coming into b is " + packet.get_payload()
+        #print "payload coming into b is " + packet.get_payload()
         checkSum = self.create_checksum_val(packet.get_payload())
         if checkSum == packet.get_checksum():
             self.to_layer5(self.B, packet.get_payload()) # I THINK THIS SHOULD SEND THE DATA UP TO layer 5 !!
@@ -194,7 +192,6 @@ class StudentNetworkSimulator(NetworkSimulator, object):
             self.ACKSENT += 1
         else:
             print "____send the old ack!!____===================="
-            # ack num = 1 - acknum
         # checksum checks if the same sdata was recieved
 
     # This routine will be called once, before any of your other B-side 
@@ -202,4 +199,5 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # initialization (e.g. of member variables you add to control the state
     # of entity B).
     def b_init(self):
-        print "___we in the init in BRAVO _____"
+        pass
+        #print "___we in the init in BRAVO _____"
