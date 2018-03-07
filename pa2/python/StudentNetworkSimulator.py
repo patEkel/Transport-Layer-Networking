@@ -111,11 +111,12 @@ class StudentNetworkSimulator(NetworkSimulator, object):
         char_sum = 0
         for c in message:
             char_sum += ord(c)
-        # char_sum += self.SEQNUM + self.SEQNUM i have no idea about this.....just use 0, 1 like FSM?
         return char_sum
 
     def print_stats(self):
         print "seqinapp:", self.SEQSENTAPP, " seqsentproto:", self.SEQSENTPROTO, " acksent:", self.ACKSENT, " numlost:", self.NUMLOST, " num corrupt:",self.NUMCORR
+        print  "packet loss:", round(((float(self.NUMLOST)) / float(self.SEQSENTPROTO)) * 100, 1), "%"
+        print "packet corruption:", round((float(self.NUMCORR) / float(self.SEQSENTPROTO))  * 100, 1), "%"
 
     # This is the constructor.  Don't touch!
     def __init__(self, num_messages, loss, corrupt, avg_delay, trace, seed):
@@ -132,13 +133,12 @@ class StudentNetworkSimulator(NetworkSimulator, object):
         if not self.INTRANSIT:
             self.INTRANSIT = True
             self.MESSAGE = message.get_data()
-            #print "payload out of a is " + message.get_data()
             self.to_layer3(self.A, p)
             self.start_timer(self.A, 25)
             self.SEQSENTAPP += 1
             self.SEQSENTPROTO += 1
-        else:
-            print "__shit already in transit"
+        # else:
+            # do nothing (drop packet)
 
     # This routine will be called whenever a packet sent from the B-side 
     # (i.e. as a result of a toLayer3() being done by a B-side procedure)
@@ -147,23 +147,20 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     def a_input(self, packet):
         if self.INTRANSIT:
             if packet.get_acknum() != self.SEQNUM or packet.get_checksum() != self.create_checksum_val(packet.get_payload()):
-                self.NUMCORR += 1
+                #self.NUMCORR += 1
+                #print "___CORRUPT packet!, send again..____"
                 self.a_output(Message(packet.get_payload()))
             else:
                 self.SEQNUM = 1 - self.SEQNUM
                 self.INTRANSIT = False
                 self.stop_timer(self.A)
-        else:
-            print "____NOTHUNG is already currently in transit!__??___"
-            # see if ACK equals seq... inc seqnum ?
-            # send to layer 5 ????
-
 
     # This routine will be called when A's timer expires (thus generating a 
     # timer interrupt). You'll probably want to use this routine to control 
     # the retransmission of packets. See startTimer() and stopTimer(), above,
     # for how the timer is started and stopped. 
     def a_timer_interrupt(self):
+        print "____TIMEOUT, send packet again________"
         self.INTRANSIT = False
         self.a_output(Message(self.MESSAGE))
         self.NUMLOST += 1
@@ -184,14 +181,15 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # sent from the A-side.
 
     def b_input(self, packet):
-        #print "payload coming into b is " + packet.get_payload()
         checkSum = self.create_checksum_val(packet.get_payload())
         if checkSum == packet.get_checksum():
-            self.to_layer5(self.B, packet.get_payload()) # I THINK THIS SHOULD SEND THE DATA UP TO layer 5 !!
+            self.to_layer5(self.B, packet.get_payload())
             self.to_layer3(self.B, packet)
             self.ACKSENT += 1
         else:
-            print "____send the old ack!!____===================="
+            self.NUMCORR += 1
+            print "____CORRUPT_PACKET, send old ack___________"
+            self.to_layer3(self.B, Packet(self.SEQNUM, 1 - self.SEQNUM, self.create_checksum_val(self.MESSAGE), self.MESSAGE))
         # checksum checks if the same sdata was recieved
 
     # This routine will be called once, before any of your other B-side 
@@ -199,5 +197,4 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # initialization (e.g. of member variables you add to control the state
     # of entity B).
     def b_init(self):
-        pass
-        #print "___we in the init in BRAVO _____"
+        self.ACKSENT = 0
