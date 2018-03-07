@@ -9,6 +9,7 @@ import random
 import math
 
 import time
+import atexit
 class StudentNetworkSimulator(NetworkSimulator, object):
 
 
@@ -96,8 +97,14 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     SEQNUM = 0
     INTRANSIT = False
     MESSAGE = ""
+    SEQSENTAPP = 0
+    SEQSENTPROTO = 0
+    ACKSENT = 0
+    NUMLOST = 0
 
 ##########   soooo should i keep track of ack num and seq sep? and then when adding here add them, not seqnum twice..
+### inc app level one for layer 5
+### inc pro level for layer 3! should be same if none lost, proto more if some re sent
 
     def create_checksum_val(self, message):
         char_sum = 0
@@ -106,63 +113,49 @@ class StudentNetworkSimulator(NetworkSimulator, object):
         # char_sum += self.SEQNUM + self.SEQNUM i have no idea about this.....just use 0, 1 like FSM?
         return char_sum
 
+    def print_stats(self):
+        print "seqinapp:", self.SEQSENTAPP, " seqsentproto:", self.SEQSENTPROTO, " acksent:", self.ACKSENT, " numlost:", self.NUMLOST
+
     # This is the constructor.  Don't touch!
     def __init__(self, num_messages, loss, corrupt, avg_delay, trace, seed):
         super(StudentNetworkSimulator,self).__init__(num_messages, loss, corrupt, avg_delay, trace, seed)
+        atexit.register(self.print_stats)
 
     # This routine will be called whenever the upper layer at the sender [A]
     # has a message to send.  It is the job of your protocol to insure that
     # the data in such a message is delivered in-order, and correctly, to
     # the receiving upper layer.
     def a_output(self, message):
-        checkSum = self.create_checksum_val(str(message))
-        p = Packet(self.SEQNUM, self.SEQNUM, checkSum, str(message))
+        checkSum = self.create_checksum_val(message.get_data())
+        p = Packet(self.SEQNUM, self.SEQNUM, checkSum, message.get_data())
         if not self.INTRANSIT:
             self.INTRANSIT = True
-            self.MESSAGE = str(message)
-            print "___patrick____!!!!!"
+            self.MESSAGE = message.get_data()
+            print "payload out of a is " + message.get_data()
             self.to_layer3(self.A, p)
-            self.start_timer(self.A, 10)
+            self.start_timer(self.A, 20)
+            self.SEQSENTAPP += 1
+            self.SEQSENTPROTO += 1
         else:
+            print "__shit already in transit"
             #if timeout, resend packet!
-            if self.get_time() > 1:
-                print "__first"
-                print self.get_time()
-            if self.get_time() > 10:
-                print "__second"
-            if self.get_time() > 100:
-                print "__third"
-            if self.get_time() > 500:
-                print "__fourth"
-            if self.get_time() > 1000:
-                print "__balllls in a_output"
-            else:
-                # while timer < 1000? wait, then send message again..?
-                 print "__cunttttt in a_output"
-
 
     # This routine will be called whenever a packet sent from the B-side 
     # (i.e. as a result of a toLayer3() being done by a B-side procedure)
     # arrives at the A-side.  "packet" is the (possibly corrupted) packet
     # sent from the B-side.
     def a_input(self, packet):
-        if not self.INTRANSIT:
-            print "___in the statement, line 147___________________________________"
+        if self.INTRANSIT:
             if packet.get_acknum() != self.SEQNUM or packet.get_checksum() != self.create_checksum_val(packet.get_payload()):
-                print "___in the iff statement, line 149___________shit is corrupttt_______________________"
-                self.a_input(Packet(self.SEQNUM, self.SEQNUM, self.create_checksum_val(str(packet.get_payload())), str(packet.get_payload())))
+                print "___in the iff statement, line 149___________shit is corrupttt________________"
+                self.a_output(Message(packet.get_payload()))
             else:
-                print "___in the else statement, 151______________________________________"
-                print self.SEQNUM
-                print packet.get_acknum()
-                print self.create_checksum_val(packet.get_payload())
-                print packet.get_checksum()
-                self.SEQNUM+=1
+                print "___in the else statement, 151_________clean receive from B to A...stop timer______"
+                self.SEQNUM = 1 - self.SEQNUM
                 self.INTRANSIT = False
                 self.stop_timer(self.A)
-                # do a checksum check
         else:
-            print "___something is already currently in transit!"
+            print "____NOTHUNG is already currently in transit!__??___"
             # see if ACK equals seq... inc seqnum ?
             # send to layer 5 ????
 
@@ -173,11 +166,10 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # for how the timer is started and stopped. 
     def a_timer_interrupt(self):
         print "___IN THE MA FUCKN TIMERRRRR INTERUPTT_______"
-        print self.SEQNUM
-        print self.INTRANSIT
-        # self INTRANSIT = false
-        #self.stop_timer(self.A)
-        self.a_output(self.MESSAGE)
+        self.INTRANSIT = False
+        self.a_output(Message(self.MESSAGE))
+        self.NUMLOST += 1
+        self.SEQSENTPROTO += 1
 
     # This routine will be called once, before any of your other A-side 
     # routines are called. It can be used to do any required
@@ -193,21 +185,16 @@ class StudentNetworkSimulator(NetworkSimulator, object):
     # sent from the A-side.
 
     def b_input(self, packet):
-        self.INTRANSIT = False
-        print "____we out here__________________________________IN BRAVOOOOOOOO"
-        print packet.get_seqnum()
-        print packet.get_acknum()
-        print packet.get_checksum()
-        print packet.get_payload()
-        checkSum = self.create_checksum_val(str(packet.get_payload()))
-        print checkSum
+        #self.INTRANSIT = False ??????
+        print "payload coming into b is " + packet.get_payload()
+        checkSum = self.create_checksum_val(packet.get_payload())
         if checkSum == packet.get_checksum():
             self.to_layer5(self.B, packet.get_payload()) # I THINK THIS SHOULD SEND THE DATA UP TO layer 5 !!
-            #self.stop_timer(self.A)
-            #self.start_timer(self.A, 100)
             self.to_layer3(self.B, packet)
+            self.ACKSENT += 1
         else:
-            print "____send the old ack!!"
+            print "____send the old ack!!____===================="
+            # ack num = 1 - acknum
         # checksum checks if the same sdata was recieved
 
     # This routine will be called once, before any of your other B-side 
